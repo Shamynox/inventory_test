@@ -169,6 +169,16 @@ class DatabaseHelper {
     final db = await database;
     await db.delete('materiales', where: 'id = ?', whereArgs: [id]);
   }
+
+  Future<void> updateMaterial(String id, Map<String, dynamic> data) async {
+    final db = await database;
+    await db.update(
+      'materiales',
+      data,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
 }
 
 // -------------------- INVENTORY SCREEN --------------------
@@ -233,6 +243,92 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (mounted) Navigator.pop(context);
   }
 
+  Future<void> _editMaterial(Map<String, dynamic> mat) async {
+    _nombreController.text = mat['nombre'];
+    _stockController.text = mat['stock'].toString();
+    _precioController.text = mat['precio'].toString();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Material'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+                controller: _nombreController,
+                decoration: const InputDecoration(labelText: 'Nombre')),
+            TextField(
+                controller: _stockController,
+                decoration: const InputDecoration(labelText: 'Stock'),
+                keyboardType: TextInputType.number),
+            TextField(
+                controller: _precioController,
+                decoration: const InputDecoration(labelText: 'Precio'),
+                keyboardType: TextInputType.number),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () async {
+              await dbHelper.updateMaterial(mat['id'], {
+                'nombre': _nombreController.text,
+                'stock': int.tryParse(_stockController.text) ?? 0,
+                'precio': double.tryParse(_precioController.text) ?? 0.0,
+              });
+              _nombreController.clear();
+              _stockController.clear();
+              _precioController.clear();
+              await _loadLocal();
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _venderMaterial(Map<String, dynamic> mat) async {
+    final TextEditingController vendidoController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Vender ${mat['nombre']}'),
+        content: TextField(
+          controller: vendidoController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Cantidad Vendida'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () async {
+              final vendido = int.tryParse(vendidoController.text) ?? 0;
+              if (vendido > 0 && vendido <= mat['stock']) {
+                final nuevoStock = mat['stock'] - vendido;
+                await dbHelper.updateMaterial(mat['id'], {
+                  'nombre': mat['nombre'],
+                  'stock': nuevoStock,
+                  'precio': mat['precio'],
+                });
+                await _loadLocal();
+              }
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('Aceptar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showAddDialog() {
     showDialog(
       context: context,
@@ -276,13 +372,49 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   itemCount: materiales.length,
                   itemBuilder: (context, index) {
                     final mat = materiales[index];
-                    return ListTile(
-                      title: Text(mat['nombre']),
-                      subtitle: Text(
-                          "Stock: ${mat['stock']} | Precio: ${mat['precio']}"),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _deleteMaterial(mat['id']),
+                    return Container(
+                      color: mat['stock'] == 0
+                          ? Colors.grey[200]
+                          : Colors.transparent,
+                      child: ListTile(
+                        title: Text(mat['nombre']),
+                        subtitle: Row(
+                          children: [
+                            Text(
+                              "Stock: ${mat['stock']}",
+                              style: TextStyle(
+                                color: mat['stock'] == 0
+                                    ? Colors.red
+                                    : Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text("Precio: ${mat['precio']}"),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () => _editMaterial(mat),
+                            ),
+                            mat['stock'] > 0
+                                ? IconButton(
+                                    icon: const Icon(Icons.shopping_cart,
+                                        color: Colors.green),
+                                    onPressed: () => _venderMaterial(mat),
+                                  )
+                                : const Icon(Icons.warning,
+                                    color: Colors.orange),
+                            IconButton(
+                              icon:
+                                  const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _deleteMaterial(mat['id']),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
