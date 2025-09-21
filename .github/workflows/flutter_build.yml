@@ -1,4 +1,4 @@
-﻿name: Flutter Build
+name: Flutter Build APK
 
 on:
   push:
@@ -13,21 +13,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      # 1. Clonar el repositorio
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
+      # 2. Instalar Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.13.3'
+          flutter-version: '3.35.3'
 
-      - name: Get Dependencies
+      # 3. Obtener dependencias
+      - name: Flutter Pub Get
         run: flutter pub get
 
+      # 4. Compilar APK release
       - name: Build APK
         run: flutter build apk --release
 
+      # 5. Subir APK como artifact
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
