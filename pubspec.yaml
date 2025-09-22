@@ -22,8 +22,8 @@ dependencies:
   # UUID
   uuid: ^4.5.1
 
-  # Gráficos interactivos
-  fl_chart: ^0.60.0
+  # Gráficos interactivos (compatible con Flutter 3.35)
+  fl_chart: ^0.55.2
 
   # UI opcional
   cupertino_icons: ^1.0.8
