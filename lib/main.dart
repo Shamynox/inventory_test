@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
-import 'package:charts_flutter/flutter.dart' as charts;
+import 'package:syncfusion_flutter_charts/charts.dart';
 
 void main() {
   runApp(const InventoryApp());
@@ -266,14 +266,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
               children: [
                 ...materiales.map((mat) => inventarioItem(mat)).toList(),
                 const SizedBox(height: 20),
-                graficoBarrasCharts(
-                  "📊 Productos Más Vendidos",
-                  {for (var m in materiales) m['nombre']: m['ventas'].toDouble()},
-                ),
-                graficoBarrasCharts(
-                  "💰 Ingresos por Producto",
-                  {for (var m in materiales) m['nombre']: (m['precio'] * m['ventas'])},
-                ),
+                graficoBarrasSF("📊 Productos Más Vendidos", {for (var m in materiales) m['nombre']: m['ventas'].toDouble()}),
+                graficoBarrasSF("💰 Ingresos por Producto", {for (var m in materiales) m['nombre']: (m['precio'] * m['ventas'])}),
               ],
             ),
     );
@@ -309,7 +303,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-decoration: BoxDecoration(
+                decoration: BoxDecoration(
                   color: mat['stock'] == 0
                       ? Colors.red
                       : mat['stock'] < 5
@@ -319,22 +313,13 @@ decoration: BoxDecoration(
                 ),
                 child: Text(
                   "Stock: ${mat['stock']}",
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                 ),
               ),
               const SizedBox(width: 20),
-              Text(
-                "Precio: \$${mat['precio']}",
-                style:
-                    const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
-              ),
+              Text("Precio: \$${mat['precio']}", style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
               const SizedBox(width: 20),
-              Text(
-                "Vendidos: ${mat['ventas']}",
-                style: const TextStyle(
-                    color: Colors.purple, fontWeight: FontWeight.w500),
-              ),
+              Text("Vendidos: ${mat['ventas']}", style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.w500)),
             ],
           )
         ],
@@ -345,42 +330,23 @@ decoration: BoxDecoration(
   Widget actionBtn(IconData icon, Color color, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-          width: 36,
-          height: 36,
-          decoration:
-              BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, color: Colors.white, size: 20)),
+      child: Container(width: 36, height: 36, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: Colors.white, size: 20)),
     );
   }
 
-  Widget graficoBarrasCharts(String titulo, Map<String, double> data) {
-    final series = [
-      charts.Series<MapEntry<String, double>, String>(
-        id: titulo,
-        domainFn: (entry, _) => entry.key,
-        measureFn: (entry, _) => entry.value,
-        colorFn: (entry, index) {
-          final colors = charts.MaterialPalette.getOrderedPalettes(data.length);
-          return colors[index!].shadeDefault;
-        },
-        data: data.entries.toList(),
-        labelAccessorFn: (entry, _) => entry.value.toStringAsFixed(0),
-      )
-    ];
-
+  Widget graficoBarrasSF(String titulo, Map<String, double> data) {
+    final entries = data.entries.toList();
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(20),
+      padding: const Edge
+padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
-          ]),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -388,13 +354,24 @@ decoration: BoxDecoration(
           const SizedBox(height: 15),
           SizedBox(
             height: 200,
-            child: charts.BarChart(
-              series,
-              animate: true,
-              vertical: true,
-              barRendererDecorator: charts.BarLabelDecorator<String>(),
-              domainAxis: const charts.OrdinalAxisSpec(
-                  renderSpec: charts.SmallTickRendererSpec(labelRotation: 60)),
+            child: SfCartesianChart(
+              primaryXAxis: CategoryAxis(
+                labelRotation: 60,
+                majorGridLines: const MajorGridLines(width: 0),
+              ),
+              primaryYAxis: NumericAxis(
+                majorGridLines: const MajorGridLines(width: 0.5),
+              ),
+              tooltipBehavior: TooltipBehavior(enable: true),
+              series: <ChartSeries>[
+                ColumnSeries<MapEntry<String, double>, String>(
+                  dataSource: entries,
+                  xValueMapper: (entry, _) => entry.key,
+                  yValueMapper: (entry, _) => entry.value,
+                  dataLabelSettings: const DataLabelSettings(isVisible: true),
+                  color: Colors.blue,
+                ),
+              ],
             ),
           ),
         ],
