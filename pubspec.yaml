@@ -22,8 +22,8 @@ dependencies:
   # UUID
   uuid: ^4.5.1
 
-  # Gráficos con charts_flutter
-  charts_flutter: ^0.12.0
+  # Gráficos con Syncfusion
+  syncfusion_flutter_charts: ^21.3.4
 
   # UI opcional
   cupertino_icons: ^1.0.8
