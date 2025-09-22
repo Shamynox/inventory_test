@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'package:charts_flutter/flutter.dart' as charts;
 
 void main() {
   runApp(const InventoryApp());
@@ -266,13 +266,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
               children: [
                 ...materiales.map((mat) => inventarioItem(mat)).toList(),
                 const SizedBox(height: 20),
-                graficoBarrasFL(
+                graficoBarrasCharts(
                   "📊 Productos Más Vendidos",
-                  {for (var m in materiales) m['nombre']: materiales.isEmpty ? 0.0 : m['ventas'] / (materiales.map((e) => e['ventas']).fold<int>(1, (a, b) => a > b ? a : b))},
+                  {for (var m in materiales) m['nombre']: m['ventas'].toDouble()},
                 ),
-                graficoBarrasFL(
+                graficoBarrasCharts(
                   "💰 Ingresos por Producto",
-                  {for (var m in materiales) m['nombre']: materiales.isEmpty ? 0.0 : (m['precio'] * m['ventas']) / (materiales.map((e) => e['precio'] * e['ventas']).fold<double>(1, (a, b) => a > b ? a : b))},
+                  {for (var m in materiales) m['nombre']: (m['precio'] * m['ventas'])},
                 ),
               ],
             ),
@@ -289,7 +289,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Nombre + Acciones
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -310,16 +309,32 @@ class _InventoryScreenState extends State<InventoryScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: mat['stock'] == 0 ? Colors.red : mat['stock'] < 5 ? Colors.orange : Colors.green,
+decoration: BoxDecoration(
+                  color: mat['stock'] == 0
+                      ? Colors.red
+                      : mat['stock'] < 5
+                          ? Colors.orange
+                          : Colors.green,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text("Stock: ${mat['stock']}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                child: Text(
+                  "Stock: ${mat['stock']}",
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w600),
+                ),
               ),
               const SizedBox(width: 20),
-              Text("Precio: \$${mat['precio']}", style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+              Text(
+                "Precio: \$${mat['precio']}",
+                style:
+                    const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
+              ),
               const SizedBox(width: 20),
-              Text("Vendidos: ${mat['ventas']}", style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.w500)),
+              Text(
+                "Vendidos: ${mat['ventas']}",
+                style: const TextStyle(
+                    color: Colors.purple, fontWeight: FontWeight.w500),
+              ),
             ],
           )
         ],
@@ -330,67 +345,60 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Widget actionBtn(IconData icon, Color color, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(width: 36, height: 36, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: Colors.white, size: 20)),
+      child: Container(
+          width: 36,
+          height: 36,
+          decoration:
+              BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
+          child: Icon(icon, color: Colors.white, size: 20)),
     );
   }
 
-  Widget graficoBarrasFL(String titulo, Map<String, double> data) {
-    final items = data.entries.toList();
-    final colors = [Colors.blue, Colors.purple, Colors.green, Colors.orange, Colors.red, Colors.teal];
+  Widget graficoBarrasCharts(String titulo, Map<String, double> data) {
+    final series = [
+      charts.Series<MapEntry<String, double>, String>(
+        id: titulo,
+        domainFn: (entry, _) => entry.key,
+        measureFn: (entry, _) => entry.value,
+        colorFn: (entry, index) {
+          final colors = charts.MaterialPalette.getOrderedPalettes(data.length);
+          return colors[index!].shadeDefault;
+        },
+        data: data.entries.toList(),
+        labelAccessorFn: (entry, _) => entry.value.toStringAsFixed(0),
+      )
+    ];
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))]),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(titulo, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 15),
-        SizedBox(
-          height: items.length * 40.0,
-          child: BarChart(
-            BarChartData(
-              maxY: 1.0,
-              barGroups: List.generate(items.length, (i) {
-                final e = items[i];
-                return BarChartGroupData(
-                  x: i,
-                  barRods: [
-                    BarChartRodData(
-                      toY: e.value.clamp(0.0, 1.0),
-                      gradient: LinearGradient(colors: [colors[i % colors.length], colors[(i + 1) % colors.length]]),
-                      borderRadius: BorderRadius.circular(6),
-                      width: 20,
-                      backDrawRodData: BackgroundBarChartRodData(show: true, toY: 1.0, color: Colors.grey[200]!),
-                    ),
-                  ],
-                  showingTooltipIndicators: [0],
-                );
-              }),
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index < 0 || index >= items.length) return const SizedBox();
-                      return GestureDetector(
-                        onTap: () => _showHistorial(items[index].key),
-                        child: Text(items[index].key, style: const TextStyle(fontSize: 12)),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              gridData: FlGridData(show: false),
-              borderData: FlBorderData(show: false),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2))
+          ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(titulo, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 15),
+          SizedBox(
+            height: 200,
+            child: charts.BarChart(
+              series,
+              animate: true,
+              vertical: true,
+              barRendererDecorator: charts.BarLabelDecorator<String>(),
+              domainAxis: const charts.OrdinalAxisSpec(
+                  renderSpec: charts.SmallTickRendererSpec(labelRotation: 60)),
             ),
-            swapAnimationDuration: const Duration(milliseconds: 700),
-            swapAnimationCurve: Curves.easeOut,
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }
