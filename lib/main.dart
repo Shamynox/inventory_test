@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart' as p; // Alias para evitar choque con BuildContext
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -198,6 +198,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
   List<Map<String, dynamic>> materiales = [];
   bool loading = true;
 
+  int _selectedIndex = 0;
+
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _stockController = TextEditingController();
   final TextEditingController _precioController = TextEditingController();
@@ -360,68 +362,265 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
+  void _onNavTap(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Inventario (${widget.usuario})')),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : materiales.isEmpty
-              ? const Center(child: Text("No hay materiales"))
-              : ListView.builder(
-                  itemCount: materiales.length,
-                  itemBuilder: (context, index) {
-                    final mat = materiales[index];
-                    return Container(
-                      color: mat['stock'] == 0
-                          ? Colors.grey[200]
-                          : Colors.transparent,
-                      child: ListTile(
-                        title: Text(mat['nombre']),
-                        subtitle: Row(
-                          children: [
-                            Text(
-                              "Stock: ${mat['stock']}",
-                              style: TextStyle(
-                                color: mat['stock'] == 0
-                                    ? Colors.red
-                                    : Colors.green,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text("Precio: ${mat['precio']}"),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _editMaterial(mat),
-                            ),
-                            mat['stock'] > 0
-                                ? IconButton(
-                                    icon: const Icon(Icons.shopping_cart,
-                                        color: Colors.green),
-                                    onPressed: () => _venderMaterial(mat),
-                                  )
-                                : const Icon(Icons.warning,
-                                    color: Colors.orange),
-                            IconButton(
-                              icon:
-                                  const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteMaterial(mat['id']),
-                            ),
-                          ],
-                        ),
+      backgroundColor: Colors.grey[100],
+      body: Column(
+        children: [
+          // HEADER
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF6366f1), Color(0xFF8b5cf6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                )
+              ],
+            ),
+            child: Column(
+              children: [
+                Text("Mi Inventario",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 5),
+                Text("Gestiona tus productos fácilmente",
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14,
+                    )),
+              ],
+            ),
+          ),
+
+          // CONTENIDO (IndexedStack)
+          Expanded(
+            child: loading
+                ? const Center(child: CircularProgressIndicator())
+                : IndexedStack(
+                    index: _selectedIndex,
+                    children: [
+                      // INVENTARIO
+                      ListView.builder(
+                        padding: const EdgeInsets.all(20),
+                        itemCount: materiales.length,
+                        itemBuilder: (context, index) {
+                          final mat = materiales[index];
+                          return inventarioItem(mat);
+                        },
                       ),
-                    );
-                  },
-                ),
+
+                      // ESTADÍSTICAS (solo ejemplo de barras)
+                      ListView(
+                        padding: const EdgeInsets.all(20),
+                        children: [
+                          graficoBarras("📊 Productos Más Vendidos", {
+                            for (var m in materiales)
+                              m['nombre']: m['stock'] / (materiales.isEmpty ? 1 : materiales.map((e) => e['stock']).reduce((a, b) => a > b ? a : b))
+                          }),
+                        ],
+                      ),
+
+                      // HISTORIAL (placeholder, se puede mejorar)
+                      ListView(
+                        padding: const EdgeInsets.all(20),
+                        children: const [
+                          Text("Historial de movimientos (próximamente)"),
+                        ],
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddDialog,
         child: const Icon(Icons.add),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onNavTap,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.grey[600],
+        backgroundColor: Colors.white,
+        elevation: 10,
+        items: const [
+          BottomNavigationBarItem(
+              icon: Icon(Icons.inventory_2), label: "Inventario"),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Stats"),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: "Historial"),
+        ],
+      ),
+    );
+  }
+
+  Widget inventarioItem(Map<String, dynamic> mat) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Nombre + Acciones
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(mat['nombre'],
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87)),
+              Row(
+                children: [
+                  actionBtn(Icons.edit, Colors.blue, () => _editMaterial(mat)),
+                  const SizedBox(width: 8),
+                  mat['stock'] > 0
+                      ? actionBtn(Icons.shopping_cart, Colors.green,
+                          () => _venderMaterial(mat))
+                      : const Icon(Icons.warning, color: Colors.orange),
+                  const SizedBox(width: 8),
+                  actionBtn(Icons.delete, Colors.red,
+                      () => _deleteMaterial(mat['id'])),
+                ],
+              )
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Stock + Precio
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: mat['stock'] == 0
+                      ? Colors.red
+                      : mat['stock'] < 5
+                          ? Colors.orange
+                          : Colors.green,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text("Stock: ${mat['stock']}",
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(width: 20),
+              Text("Precio: \$${mat['precio']}",
+                  style: const TextStyle(
+                      color: Colors.grey, fontWeight: FontWeight.w500)),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget actionBtn(IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: Colors.white, size: 20),
+      ),
+    );
+  }
+
+  Widget graficoBarras(String titulo, Map<String, double> data) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20
+),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(titulo,
+              style: const TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87)),
+          const SizedBox(height: 15),
+          ...data.entries.map((e) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    SizedBox(
+                        width: 80,
+                        child: Text(e.key,
+                            style: const TextStyle(color: Colors.grey))),
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          Container(
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          FractionallySizedBox(
+                            widthFactor: e.value,
+                            child: Container(
+                              height: 24,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                    colors: [Color(0xFF6366f1), Color(0xFF8b5cf6)]),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text("${(e.value * 100).toInt()}",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, color: Colors.black87)),
+                  ],
+                ),
+              ))
+        ],
       ),
     );
   }
