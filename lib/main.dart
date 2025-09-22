@@ -338,8 +338,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final entries = data.entries.toList();
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
-      padding: const Edge
-padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -363,7 +362,7 @@ padding: const EdgeInsets.all(20),
                 majorGridLines: const MajorGridLines(width: 0.5),
               ),
               tooltipBehavior: TooltipBehavior(enable: true),
-              series: <ChartSeries>[
+              series: <ColumnSeries<MapEntry<String, double>, String>>[
                 ColumnSeries<MapEntry<String, double>, String>(
                   dataSource: entries,
                   xValueMapper: (entry, _) => entry.key,
